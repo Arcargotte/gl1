@@ -24,7 +24,6 @@ else
     touch "/home/$USER/refcontrol"
     echo "refcontrol file has been created at /home/$USER"
     echo "Check the contents of the file to read any references"
-
 fi
 
 while [[ 0 == 0 ]]; do

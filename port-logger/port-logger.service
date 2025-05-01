@@ -1,0 +1,13 @@
+[Unit]
+Description=Logs date and port used by a USB drive on the system
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/home/arcargotte/Lab/sysadmin/gl1/port-logger/port-logger.service
+User=arcargotte
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/arcargotte/.Xauthority
+
+[Install]
+WantedBy=multi-user.target
