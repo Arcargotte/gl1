@@ -28,6 +28,8 @@ else
 fi
 
 while [[ 0 == 0 ]]; do
+    reference=
+    refpath=
     echo "(1) Print references"
     echo "(2) Add reference"
     echo "(3) Erase reference"
@@ -40,9 +42,7 @@ while [[ 0 == 0 ]]; do
     if [[ $usrPrompt == 1 ]]; then
         echo "Printing references..."
 
-        while IFS= read -r linea; do
-            echo "$linea"
-        done < /home/$USER/refcontrol
+        awk '{ print $0 }' /home/$USER/refcontrol
 
     elif [[ $usrPrompt == 2 ]]; then
         echo "Adding references..."
@@ -76,13 +76,42 @@ while [[ 0 == 0 ]]; do
 
     elif [[ $usrPrompt == 3 ]]; then
         echo "Erasing references..."
+        read reference
+        if grep -q "$reference" /home/$USER/refcontrol; then
+            touch /home/$USER/temp
+            awk -v varReference="$reference" '$1 != varReference' /home/$USER/refcontrol > /home/$USER/temp
+            cat /home/$USER/temp > /home/$USER/refcontrol
+            rm /home/$USER/temp
+
+            echo "Reference erased successfully"
+        else
+            echo "Reference doesn't exist. Aborting!"
+        fi
+
 
     elif [[ $usrPrompt == 4 ]]; then
+        accessControl=
         echo "Changing access control..."
+        echo "Input reference of file"
+        read reference
+
+        if grep -q "$reference" /home/$USER/refcontrol; then
+            refPath=$(grep "$reference" /home/$USER/refcontrol | awk '{print $2}')
+            echo "Please, input access control in octal format"
+            read accessControl
+
+            chmod "$accessControl" "$refPath"
+
+            echo "Access control of reference changed successfully!"
+        else
+            echo "Reference doesn't exist. Aborting!"
+        fi
     elif [[ $usrPrompt == 5 ]]; then
         echo "Finishing program..."
         exit
     else
         echo "Invalid entry. Please, try again"
     fi
+
+    echo
 done
