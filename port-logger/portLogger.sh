@@ -6,6 +6,7 @@
 #WRITE TO LOG EVERY TIME IT DETECTS 'USB' AT A MESSAGE LOG
 
 rawLogMsg=
+port=
 nport=
 logMsg=
 currDev=
@@ -14,7 +15,7 @@ bounded=1
 date=""
 
 if find /home/$USER -type f -name "USBLogs" | grep -q .; then
-    echo "FILE FOUND"
+    echo "Logs found at /home/$USER"
     #INITIATE PROGRAM
 else
     touch "/home/$USER/USBLogs"
@@ -24,43 +25,36 @@ fi
 
 while read rawLogMsg; do
 
-    nport=$(grep -o -E "usb[0-9]+/[0-9]+-[0-9]+" <<< "$rawLogMsg")
+    port=$(grep -o -E "usb[0-9]+/[0-9]+-[0-9]+" <<< "$rawLogMsg")
 
-    # if [[ "$rawLogMsg" =~ (usb[0-9]+-[0-9]+|[a-z]+[0-9]+) ]]; then
-    #     nport="${BASH_REMATCH[0]}"
-    # else
-    #     nport="unknown"
-    # fi
+    nport=$(echo "$port" | sed -E 's/.*-([0-9]+).*/\1/')
 
-    if [[ "$currDev" != "$nport" ]]; then
+    if [[ "$currDev" != "$port" ]]; then
         firstMsg=0
-        currDev="$nport"
+        currDev="$port"
     fi
 
-
     if grep -q -E "add|bind" <<< "$rawLogMsg"; then
-
-        if [[ "$firstMsg" != "0" ]] && [[ "$currDev" == "$nport" ]] && [[ "$bounded" == "1" ]]; then
+        if [[ "$firstMsg" != "0" ]] && [[ "$currDev" == "$port" ]] && [[ "$bounded" == "1" ]]; then
             firstMsg=0
         fi
 
         if [[ "$firstMsg" == "0" ]]; then
             #INSERT CODE FOR LOGGING 1st TIME
             date=$(date +"%Y-%m-%d %H:%M:%S")
-
-            echo "$date USB CONNECTED: $nport"
+            echo "USB Connected at $date on port $nport" >> "/home/$USER/USBLogs"
             firstMsg=1
             bounded=0
         fi
 
     elif grep -q -E "remove|unbind" <<< "$rawLogMsg"; then
-
-        if [[ "$firstMsg" != "0" ]] && [[ "$currDev" == "$nport" ]] && [[ "$bounded" == "0" ]]; then
+        if [[ "$firstMsg" != "0" ]] && [[ "$currDev" == "$port" ]] && [[ "$bounded" == "0" ]]; then
             firstMsg=0
         fi
 
         if [[ "$firstMsg" == "0" ]]; then
-            echo "$date USB DISCONNECTED: $nport"
+            date=$(date +"%Y-%m-%d %H:%M:%S")
+            echo "USB Disconnected at $date on port $nport" >> "/home/$USER/USBLogs"
 
             firstMsg=1
             bounded=1
@@ -68,7 +62,7 @@ while read rawLogMsg; do
 
     fi
 
-    echo "$rawLogMsg"
+    #echo "$rawLogMsg"
     # echo ">>> USB: $nport <<<"
     # echo "Dispositivo: $currDev"
 done < <(udevadm monitor --subsystem-match=usb)

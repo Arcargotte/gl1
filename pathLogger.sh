@@ -13,104 +13,96 @@
 
 # BY DEFAULT, FILE NAME IS refcontrol AT /home/$USER
 
-usrInput=
-usrPrompt=
-
-if find /home/$USER -type f -name "refcontrol" | grep -q .; then
-    echo "FILE FOUND"
-    echo "$fileExists"
-    #INITIATE PROGRAM
-else
+if ! find /home/$USER -type f -name "refcontrol" | grep -q .; then
     touch "/home/$USER/refcontrol"
     echo "refcontrol file has been created at /home/$USER"
     echo "Check the contents of the file to read any references"
 fi
 
-while [[ 0 == 0 ]]; do
+while getopts "hpa:r:c:" o; do
     reference=
     refpath=
-    echo "(1) Print references"
-    echo "(2) Add reference"
-    echo "(3) Erase reference"
-    echo "(4) Change access control"
-    echo "(5) Exit"
 
-    read -n 1 usrPrompt
-    echo
+    case "$o" in
+        :)
+            echo "  Option -$o requires an argument."
+        ;;
+        p)
+            echo "Printing references..."
+            awk '{ print $0 }' /home/$USER/refcontrol
+        ;;
+        a)
+            echo "Adding references..."
+            #CHECK IF REFERENCE EXISTS find /home/$USER -type f -name "refcontrol" | grep -q .
+            #CHECK IF FILE EXISTS
+            #CHECK IF FILE IS A DEVICE
+            #CREATE REFERENCE
 
-    if [[ $usrPrompt == 1 ]]; then
-        echo "Printing references..."
+            reference=$(awk '{ print $1 }' <<< $OPTARG)
+            echo "$reference"
+            refPath=$(awk '{ print $2 }' <<< $OPTARG)
+            echo "$refPath"
 
-        awk '{ print $0 }' /home/$USER/refcontrol
-
-    elif [[ $usrPrompt == 2 ]]; then
-        echo "Adding references..."
-        #CHECK IF REFERENCE EXISTS find /home/$USER -type f -name "refcontrol" | grep -q .
-        #CHECK IF FILE EXISTS
-        #CHECK IF FILE IS A DEVICE
-        #CREATE REFERENCE
-        read usrInput
-
-        reference=$(awk '{ print $1 }' <<< $usrInput)
-        refPath=$(awk '{ print $2 }' <<< $usrInput)
-
-        if grep -q "$reference" /home/$USER/refcontrol; then
-            echo "Reference already exists. Aborting!"
-            exit
-        fi
-
-        if find "$refPath" | grep -q .; then
-            echo "Checking file..."
-            if grep -q "/dev/" <<< "$refPath"; then
-                echo "File is a device. Aborting!"
-            else
-                echo $usrInput >> /home/"$USER"/refcontrol
-                echo "Reference added successfully"
-                echo "Creating reference"
+            if grep -q "$reference" /home/$USER/refcontrol; then
+                echo "Reference already exists. Aborting!"
+                exit
             fi
-        else
-            echo "File doesn't exist. Aborting!"
-            exit
-        fi
 
-    elif [[ $usrPrompt == 3 ]]; then
-        echo "Erasing references..."
-        read reference
-        if grep -q "$reference" /home/$USER/refcontrol; then
-            touch /home/$USER/temp
-            awk -v varReference="$reference" '$1 != varReference' /home/$USER/refcontrol > /home/$USER/temp
-            cat /home/$USER/temp > /home/$USER/refcontrol
-            rm /home/$USER/temp
+            if find "$refPath" | grep -q .; then
+                echo "Checking file..."
+                if grep -q "/dev/" <<< "$refPath"; then
+                    echo "File is a device. Aborting!"
+                else
+                    echo "$reference $refPath" >> /home/"$USER"/refcontrol
+                    echo "Reference added successfully"
+                fi
+            else
+                echo "File doesn't exist. Aborting!"
+                exit
+            fi
+        ;;
+        r)
+            echo "Erasing references..."
 
-            echo "Reference erased successfully"
-        else
-            echo "Reference doesn't exist. Aborting!"
-        fi
+            reference=$(awk '{ print $1 }' <<< $OPTARG)
 
+            if grep -q "$reference" /home/$USER/refcontrol; then
+                touch /home/$USER/temp
+                awk -v varReference="$reference" '$1 != varReference' /home/$USER/refcontrol > /home/$USER/temp
+                cat /home/$USER/temp > /home/$USER/refcontrol
+                rm /home/$USER/temp
 
-    elif [[ $usrPrompt == 4 ]]; then
-        accessControl=
-        echo "Changing access control..."
-        echo "Input reference of file"
-        read reference
+                echo "Reference erased successfully"
+            else
+                echo "Reference doesn't exist. Aborting!"
+            fi
+        ;;
+        c)
+            accessControl=$(awk '{ print $2 }' <<< $OPTARG)
+            reference=$(awk '{ print $1 }' <<< $OPTARG)
 
-        if grep -q "$reference" /home/$USER/refcontrol; then
-            refPath=$(grep "$reference" /home/$USER/refcontrol | awk '{print $2}')
-            echo "Please, input access control in octal format"
-            read accessControl
+            if grep -q "$reference" /home/$USER/refcontrol; then
+                refPath=$(grep "$reference" /home/$USER/refcontrol | awk '{print $2}')
+                chmod "$accessControl" "$refPath"
 
-            chmod "$accessControl" "$refPath"
+                echo "Access control of reference changed successfully!"
+            else
+                echo "Reference doesn't exist. Aborting!"
+            fi
+            ;;
 
-            echo "Access control of reference changed successfully!"
-        else
-            echo "Reference doesn't exist. Aborting!"
-        fi
-    elif [[ $usrPrompt == 5 ]]; then
-        echo "Finishing program..."
-        exit
-    else
-        echo "Invalid entry. Please, try again"
-    fi
+        h)
+            echo "Usage: pathLogger [OPTION]"
+            echo "or: pathLogger [OPTION] 'REFERENCE [PATH TO REFERENCE]'"
+            echo "or: pathLogger [OPTION] 'REFERENCE OCTAL-MODE CODE'"
+            echo "For more than two arguments passed to command must be enclosed in double quotes."
+            echo
+            echo "-p    prints all references"
+            echo "-a    add a new reference"
+            echo "-r    remove a reference"
+            echo "-c    change access control of reference"
 
-    echo
+        ;;
+    esac
+
 done

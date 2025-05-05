@@ -4,7 +4,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/home/arcargotte/Lab/sysadmin/gl1/port-logger/port-logger.service
+ExecStart=/home/arcargotte/Lab/sysadmin/gl1/port-logger/portLogger.sh
 User=arcargotte
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/arcargotte/.Xauthority
