@@ -10,9 +10,10 @@ port=
 nport=
 logMsg=
 currDev=
-firstMsg=0
-bounded=1
+firstMsgIn=0
+firstMsgOut=0
 date=""
+declare -i numDevs=0
 
 if find /home/$USER -type f -name "USBLogs" | grep -q .; then
     echo "Logs found at /home/$USER"
@@ -24,47 +25,37 @@ else
 fi
 
 while read rawLogMsg; do
-
     port=$(grep -o -E "usb[0-9]+/[0-9]+-[0-9]+" <<< "$rawLogMsg")
-
     nport=$(echo "$port" | sed -E 's/.*-([0-9]+).*/\1/')
 
     if [[ "$currDev" != "$port" ]]; then
-        firstMsg=0
-        currDev="$port"
+        firstMsgIn=0;
+        firstMsgOut=0;
+        currDev="$port";
     fi
 
-    if grep -q -E "add|bind" <<< "$rawLogMsg"; then
-        if [[ "$firstMsg" != "0" ]] && [[ "$currDev" == "$port" ]] && [[ "$bounded" == "1" ]]; then
-            firstMsg=0
-        fi
+    if grep -q -E "add|\bbind\b" <<< "$rawLogMsg" && [[ "$firstMsgIn" == "0" ]]; then
+        #INSERT CODE FOR LOGGING 1st TIME
+        date=$(date +"%Y-%m-%d %H:%M:%S")
+        echo "USB Connected at $date on port $nport" 
+        #>> "/home/$USER/USBLogs"
+        firstMsgIn=1
+        currDev="$port";
+        numDevs=$(($numDevs + 1));
+        echo "$rawLogMsg";
 
-        if [[ "$firstMsg" == "0" ]]; then
-            #INSERT CODE FOR LOGGING 1st TIME
-            date=$(date +"%Y-%m-%d %H:%M:%S")
-            echo "USB Connected at $date on port $nport" >> "/home/$USER/USBLogs"
-            firstMsg=1
-            bounded=0
-        fi
+    elif grep -q -E "remove|unbind" <<< "$rawLogMsg" && [[ "$firstMsgOut" == "0" ]]; then
 
-    elif grep -q -E "remove|unbind" <<< "$rawLogMsg"; then
-        if [[ "$firstMsg" != "0" ]] && [[ "$currDev" == "$port" ]] && [[ "$bounded" == "0" ]]; then
-            firstMsg=0
-        fi
-
-        if [[ "$firstMsg" == "0" ]]; then
-            date=$(date +"%Y-%m-%d %H:%M:%S")
-            echo "USB Disconnected at $date on port $nport" >> "/home/$USER/USBLogs"
-
-            firstMsg=1
-            bounded=1
-        fi
+        date=$(date +"%Y-%m-%d %H:%M:%S")
+        echo "USB Disconnected at $date on port $nport" 
+        #>> "/home/$USER/USBLogs"
+        firstMsgOut=1
+        currDev="$port";
+        numDevs=$(($numDevs - 1));
+        echo "$rawLogMsg";
 
     fi
 
-    #echo "$rawLogMsg"
-    # echo ">>> USB: $nport <<<"
-    # echo "Dispositivo: $currDev"
 done < <(udevadm monitor --subsystem-match=usb)
 
 #MAKE ARRAY OF BUSY PORTS
